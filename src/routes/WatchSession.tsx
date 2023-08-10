@@ -4,22 +4,58 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Box, Button, TextField, Tooltip } from "@mui/material";
 import LinkIcon from "@mui/icons-material/Link";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
+import { socket } from "../socket";
 
 const WatchSession: React.FC = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const [url, setUrl] = useState<string | null>(null);
+  const [inputUrl, setInputUrl] = useState<string>("");
 
   const [linkCopied, setLinkCopied] = useState(false);
 
   useEffect(() => {
-    // load video by session ID -- right now we just hardcode a constant video but you should be able to load the video associated with the session
-    setUrl("https://www.youtube.com/watch?v=NX1eKLReSpY");
+    socket.connect();
 
-    // if session ID doesn't exist, you'll probably want to redirect back to the home / create session page
+    socket.emit("join session", sessionId);
+
+    socket.on("session joined", (sessionDetails) => {
+      console.log("Joined session with details:", sessionDetails);
+      setUrl(sessionDetails.youtubeUrl);
+      setInputUrl(sessionDetails.youtubeUrl);
+    });
+
+    socket.on("video url change", (url) => {
+      console.log("Video url changed to ", url);
+      setUrl(url);
+      setInputUrl(url);
+    });
+
+    socket.on("error", () => {
+      console.log("Tried to join nonexistent session.")
+      navigate("/")
+    })
+
+    return () => {
+      socket.off("session joined")
+      socket.off("error")
+      socket.off("video url change")
+      socket.disconnect();
+    }
   }, [sessionId]);
 
-  if (!!url) {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputUrl(e.target.value);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && inputUrl) {
+        setUrl(inputUrl);
+        socket.emit("video url change", ({ sessionId: sessionId, url: inputUrl}));
+    }
+  };
+
+  if (!!url && !!sessionId) {
     return (
       <>
         <Box
@@ -33,11 +69,9 @@ const WatchSession: React.FC = () => {
           <TextField
             label="Youtube URL"
             variant="outlined"
-            value={url}
-            inputProps={{
-              readOnly: true,
-              disabled: true,
-            }}
+            value={inputUrl}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
             fullWidth
           />
           <Tooltip title={linkCopied ? "Link copied" : "Copy link to share"}>
@@ -66,7 +100,7 @@ const WatchSession: React.FC = () => {
             </Button>
           </Tooltip>
         </Box>
-        <VideoPlayer url={url} />;
+        <VideoPlayer url={url} sessId={sessionId} />;
       </>
     );
   }

@@ -1,16 +1,37 @@
 import { Box, Button } from "@mui/material";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactPlayer from "react-player";
+import { socket } from "../socket";
 
 interface VideoPlayerProps {
   url: string;
+  sessId: string;
   hideControls?: boolean;
 }
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, hideControls }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, sessId, hideControls }) => {
   const [hasJoined, setHasJoined] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [playing, setPlaying] = useState<boolean>(false)
   const player = useRef<ReactPlayer>(null);
+
+  useEffect(() => {
+    const handleVideoStateChange = (vidState: { playing: boolean, time: number }) => {
+        console.log("Got a message from the server")
+        if (player.current && Math.abs(vidState.time - player.current.getCurrentTime()) > 2) {
+          setPlaying(vidState.playing);
+          player.current?.seekTo(vidState.time, "seconds");
+        }
+        setPlaying(vidState.playing);
+    };
+
+    socket.on('video state change', handleVideoStateChange);
+
+    return () => {
+        console.log("VideoPlayer unmounted.")
+        socket.off('video state change', handleVideoStateChange);
+    };
+}, [socket]);
 
   const handleReady = () => {
     setIsReady(true);
@@ -20,31 +41,23 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, hideControls }) => {
     console.log("Video ended");
   };
 
-  const handleSeek = (seconds: number) => {
-    // Ideally, the seek event would be fired whenever the user moves the built in Youtube video slider to a new timestamp.
-    // However, the youtube API no longer supports seek events (https://github.com/cookpete/react-player/issues/356), so this no longer works
-
-    // You'll need to find a different way to detect seeks (or just write your own seek slider and replace the built in Youtube one.)
-    // Note that when you move the slider, you still get play, pause, buffer, and progress events, can you use those?
-
-    console.log(
-      "This never prints because seek decetion doesn't work: ",
-      seconds
-    );
-  };
-
   const handlePlay = () => {
     console.log(
       "User played video at time: ",
       player.current?.getCurrentTime()
     );
+    setPlaying(true)
+    socket.emit('video state change', { sessionId: sessId, state: { playing: true, time: player.current?.getCurrentTime()}})
   };
+
 
   const handlePause = () => {
     console.log(
       "User paused video at time: ",
       player.current?.getCurrentTime()
     );
+    setPlaying(false)
+    socket.emit('video state change', { sessionId: sessId, state: { playing: false, time: player.current?.getCurrentTime()} })
   };
 
   const handleBuffer = () => {
@@ -78,11 +91,10 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, hideControls }) => {
         <ReactPlayer
           ref={player}
           url={url}
-          playing={hasJoined}
+          playing={playing}
           controls={!hideControls}
           onReady={handleReady}
           onEnded={handleEnd}
-          onSeek={handleSeek}
           onPlay={handlePlay}
           onPause={handlePause}
           onBuffer={handleBuffer}
@@ -99,7 +111,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, hideControls }) => {
         <Button
           variant="contained"
           size="large"
-          onClick={() => setHasJoined(true)}
+          onClick={() => {
+            setHasJoined(true);
+            setPlaying(true);
+          }
+        }
         >
           Watch Session
         </Button>

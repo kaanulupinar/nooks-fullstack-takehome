@@ -2,15 +2,25 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Box, Button, TextField } from "@mui/material";
 import { v4 as uuidv4 } from "uuid";
+import axios from "axios";
 
 const CreateSession: React.FC = () => {
   const navigate = useNavigate();
   const [newUrl, setNewUrl] = useState("");
 
   const createSession = async () => {
-    setNewUrl("");
     const sessionId = uuidv4();
-    navigate(`/watch/${sessionId}`);
+    const videoUrl = newUrl;
+    axios.post('http://localhost:8080/create', { youtubeUrl: videoUrl, sessId: sessionId }) //TODO: node env variable
+      .then(response => {
+        setNewUrl("");
+        navigate(`/watch/${sessionId}`);
+      })
+      .catch(error => {
+        console.error('There was an error!', error);
+        alert("An error occured on the backend when attempting to create the session.")
+        //backend error
+      });
   };
 
   return (
