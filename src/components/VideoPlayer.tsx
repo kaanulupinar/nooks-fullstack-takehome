@@ -2,6 +2,7 @@ import { Box, Button } from "@mui/material";
 import React, { useEffect, useRef, useState } from "react";
 import ReactPlayer from "react-player";
 import { socket } from "../socket";
+import axios from "axios";
 
 interface VideoPlayerProps {
   url: string;
@@ -17,9 +18,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, sessId, hideControls }) 
 
   useEffect(() => {
     const handleVideoStateChange = (vidState: { playing: boolean, time: number }) => {
-        console.log("Got a message from the server")
         if (player.current && Math.abs(vidState.time - player.current.getCurrentTime()) > 2) {
-          setPlaying(vidState.playing);
           player.current?.seekTo(vidState.time, "seconds");
         }
         setPlaying(vidState.playing);
@@ -32,6 +31,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, sessId, hideControls }) 
         socket.off('video state change', handleVideoStateChange);
     };
 }, [socket]);
+
+  const handleJoinSession = () => {
+    axios.get(`http://localhost:8080/sessions/${sessId}`)
+    .then(response => {
+      setHasJoined(true);
+      player.current?.seekTo(response.data.time, "seconds");
+      setPlaying(response.data.playing);
+    })
+    .catch(error => {
+      console.error('There was an error!', error);
+      alert("An error occured on the backend when attempting fetch video status.")
+    });
+  }
 
   const handleReady = () => {
     setIsReady(true);
@@ -111,11 +123,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ url, sessId, hideControls }) 
         <Button
           variant="contained"
           size="large"
-          onClick={() => {
-            setHasJoined(true);
-            setPlaying(true);
-          }
-        }
+          onClick={handleJoinSession}
         >
           Watch Session
         </Button>

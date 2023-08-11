@@ -11,7 +11,7 @@ const CreateSession: React.FC = () => {
   const createSession = async () => {
     const sessionId = uuidv4();
     const videoUrl = newUrl;
-    axios.post('http://localhost:8080/create', { youtubeUrl: videoUrl, sessId: sessionId }) //TODO: node env variable
+    axios.post('http://localhost:8080/create', { youtubeUrl: videoUrl, sessId: sessionId })
       .then(response => {
         setNewUrl("");
         navigate(`/watch/${sessionId}`);

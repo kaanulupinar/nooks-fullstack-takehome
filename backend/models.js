@@ -11,8 +11,9 @@ var InMemorySessionStore = /** @class */ (function () {
             users: [],
             videoState: {
                 playing: false,
-                time: 0
-            }
+                time: 0,
+            },
+            lastUpdated: Date.now()
         };
     };
     InMemorySessionStore.prototype.getSession = function (sessionId) {
@@ -39,9 +40,14 @@ var InMemorySessionStore = /** @class */ (function () {
     };
     InMemorySessionStore.prototype.updateVideoState = function (sessionId, videoState) {
         this.sessions[sessionId].videoState = videoState;
+        this.sessions[sessionId].lastUpdated = Date.now();
     };
     InMemorySessionStore.prototype.updateVideoUrl = function (sessionId, url) {
         this.sessions[sessionId].youtubeUrl = url;
+        this.sessions[sessionId].videoState = {
+            playing: false,
+            time: 0
+        };
     };
     return InMemorySessionStore;
 }());

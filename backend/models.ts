@@ -7,6 +7,7 @@ export interface Session {
   youtubeUrl: string;
   users: string[];
   videoState: VideoState;
+  lastUpdated: number;
 }
 
 export interface SessionStore {
@@ -40,8 +41,9 @@ export class InMemorySessionStore implements SessionStore {
       users: [],
       videoState: {
         playing: false,
-        time: 0
-      }
+        time: 0,
+      },
+      lastUpdated: Date.now()
     }
   }
 
@@ -73,10 +75,15 @@ export class InMemorySessionStore implements SessionStore {
 
   updateVideoState(sessionId: string, videoState: VideoState) {
     this.sessions[sessionId].videoState = videoState;
+    this.sessions[sessionId].lastUpdated = Date.now();
   }
 
   updateVideoUrl(sessionId: string, url: string) {
     this.sessions[sessionId].youtubeUrl = url;
+    this.sessions[sessionId].videoState = {
+      playing: false,
+      time: 0
+    };
   }
 
 

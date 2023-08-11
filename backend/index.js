@@ -1,4 +1,15 @@
 "use strict";
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var express = require("express");
 var socket_io_1 = require("socket.io");
@@ -25,16 +36,36 @@ app.post('/create', function (req, res) {
     sessStore.addSession(req.body.sessId, req.body.youtubeUrl);
     res.sendStatus(201);
 });
+app.get('/sessions/:sessionId', function (req, res) {
+    if (sessStore.hasSession(req.params.sessionId)) {
+        var session = sessStore.getSession(req.params.sessionId);
+        var vidState = void 0;
+        if (session.videoState.playing) { //video is currently playing, have to account for time since last update
+            var secondsSinceUpdate = (Date.now() - session.lastUpdated) / 1000;
+            vidState = {
+                playing: true,
+                time: session.videoState.time + secondsSinceUpdate
+            };
+        }
+        else {
+            vidState = __assign({}, session.videoState);
+        }
+        res.json(vidState);
+    }
+    else {
+        res.status(404).json({ error: "Session not found" });
+    }
+});
 var handleJoin = function (sessionStore, socket) { return function (sessionId) {
     if (sessionStore.hasSession(sessionId)) {
         socket.join(sessionId);
         sessionStore.addUser(sessionId, socket.id);
-        socket.emit('session joined', sessionStore.getSession(sessionId));
+        socket.emit('session joined', { youtubeUrl: sessionStore.getSession(sessionId).youtubeUrl });
         console.log('user', socket.id, 'joined session', sessionId);
     }
     else {
         socket.emit('error', 'Session not found');
-        console.log('user', socket.id, 'tried to join nonexistent session', sessionId);
+        console.log('user', socket.id, 'tried to join nonexistent session', sessionId); //should never happen
     }
 }; };
 var handleStateChange = function (sessionStore, socket) { return function (_a) {

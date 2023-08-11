@@ -30,15 +30,34 @@ app.post('/create', (req, res) => {
   res.sendStatus(201);
 });
 
+app.get('/sessions/:sessionId', (req, res) => { //get current video state for when a user clicks "join session"
+  if (sessStore.hasSession(req.params.sessionId)) {
+    const session = sessStore.getSession(req.params.sessionId)
+    let vidState: VideoState;
+    if (session.videoState.playing) { //video is currently playing, have to account for time since last update
+      const secondsSinceUpdate = (Date.now() - session.lastUpdated)/1000
+      vidState = {
+        playing: true,
+        time: session.videoState.time + secondsSinceUpdate
+      };
+    } else {
+      vidState = session.videoState
+    }
+    res.json(vidState);
+  } else {
+    res.status(404).json({ error: "Session not found" });
+  }
+})
+
 const handleJoin = (sessionStore: SessionStore, socket: Socket) => (sessionId: string) => {
   if (sessionStore.hasSession(sessionId)) {
     socket.join(sessionId);
     sessionStore.addUser(sessionId, socket.id);
-    socket.emit('session joined', sessionStore.getSession(sessionId));
+    socket.emit('session joined', { youtubeUrl: sessionStore.getSession(sessionId).youtubeUrl });
     console.log('user', socket.id, 'joined session', sessionId);
   } else {
     socket.emit('error', 'Session not found');
-    console.log('user', socket.id, 'tried to join nonexistent session', sessionId);
+    console.log('user', socket.id, 'tried to join nonexistent session', sessionId); //should never happen
   }
 }
 

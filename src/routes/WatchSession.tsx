@@ -19,10 +19,11 @@ const WatchSession: React.FC = () => {
 
     socket.emit("join session", sessionId);
 
-    socket.on("session joined", (sessionDetails) => {
-      console.log("Joined session with details:", sessionDetails);
-      setUrl(sessionDetails.youtubeUrl);
-      setInputUrl(sessionDetails.youtubeUrl);
+    socket.on("session joined", (session) => {
+      const youtubeUrl = session.youtubeUrl;
+      console.log("Joined session with url:", youtubeUrl);
+      setUrl(youtubeUrl);
+      setInputUrl(youtubeUrl);
     });
 
     socket.on("video url change", (url) => {
